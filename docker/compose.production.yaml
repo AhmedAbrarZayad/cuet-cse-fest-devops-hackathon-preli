@@ -1,6 +1,88 @@
-# services:
-  # backend:
+version: '3.8'
 
-  # gateway:
+services:
+  mongo:
+    image: mongo:7-jammy
+    container_name: mongo-prod
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data_prod:/data/db
+    networks:
+      - private-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 
-  # mongo:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: backend-prod
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      BACKEND_PORT: ${BACKEND_PORT}
+      NODE_ENV: production
+    networks:
+      - private-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: gateway-prod
+    environment:
+      BACKEND_URL: http://backend:${BACKEND_PORT}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      NODE_ENV: production
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    networks:
+      - private-network
+    depends_on:
+      - backend
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+networks:
+  private-network:
+    driver: bridge
+    internal: true
+
+volumes:
+  mongodb_data_prod:
+    driver: local

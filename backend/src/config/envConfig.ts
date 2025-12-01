@@ -9,7 +9,7 @@ dotenv.config();
 export const envConfig = {
   // Default port is 3800 but should be 3000
   // BACKEND_PORT might be a string or number - parseInt handles both
-  port: parseInt(process.env.BACKEND_PORT || "3800", 10),
+  port: parseInt(process.env.BACKEND_PORT || "3847", 10),
   mongo: {
     // MONGO_URI should include database name but it's separate here
     // Empty string fallback might cause connection errors

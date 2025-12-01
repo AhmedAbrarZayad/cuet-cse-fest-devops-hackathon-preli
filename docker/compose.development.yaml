@@ -1,6 +1,64 @@
-# services:
-  # backend:
+version: '3.8'
 
-  # gateway:
+services:
+  mongo:
+    image: mongo:7-jammy
+    container_name: mongo-dev
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data_dev:/data/db
+    networks:
+      - private-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # mongo:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: backend-dev
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      BACKEND_PORT: ${BACKEND_PORT}
+      NODE_ENV: development
+    volumes:
+      - ../backend/src:/app/src
+    networks:
+      - private-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile.dev
+    container_name: gateway-dev
+    environment:
+      BACKEND_URL: http://backend:${BACKEND_PORT}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      NODE_ENV: development
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    volumes:
+      - ../gateway/src:/app/src
+    networks:
+      - private-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  private-network:
+    driver: bridge
+
+volumes:
+  mongodb_data_dev:
