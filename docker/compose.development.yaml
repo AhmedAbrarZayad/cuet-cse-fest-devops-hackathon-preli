@@ -13,7 +13,7 @@ services:
       - private-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok", "-u", "$$MONGO_INITDB_ROOT_USERNAME", "-p", "$$MONGO_INITDB_ROOT_PASSWORD", "--authenticationDatabase", "admin"]
       interval: 10s
       timeout: 5s
       retries: 5
